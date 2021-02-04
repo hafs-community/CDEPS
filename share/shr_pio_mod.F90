@@ -147,15 +147,18 @@ contains
 !<
 
 
-  subroutine shr_pio_init2(comp_id, comp_name, comp_iamin, comp_comm, comp_comm_iam)
+  subroutine shr_pio_init2(comp_id, comp_name, comp_iamin, comp_comm, comp_comm_iam, comp_with_pio)
     use shr_string_mod, only : shr_string_toLower
     integer, intent(in) :: comp_id(:)
     logical, intent(in) :: comp_iamin(:)
     character(len=*), intent(in) :: comp_name(:)
     integer, intent(in) ::  comp_comm(:), comp_comm_iam(:)
+    logical          , optional, intent(in) :: comp_with_pio(:)
+
     integer :: i
     character(len=shr_kind_cl) :: nlfilename, cname
     integer :: ret
+    logical :: uses_pio
     character(*), parameter :: subName = '(shr_pio_init2) '
 
     if(pio_debug_level>0) then
@@ -204,7 +207,13 @@ contains
 !       i=1
     else
        do i=1,total_comps
-          if(comp_iamin(i)) then
+          ! selectively turn on/off support for particular component
+          uses_pio = .true.
+          if (present(comp_with_pio)) then
+             uses_pio = comp_with_pio(i)
+          end if
+
+          if(comp_iamin(i) .and. uses_pio) then
              cname = comp_name(i)
              if(len_trim(cname) <= 3) then
                 nlfilename=trim(shr_string_toLower(cname))//'_modelio.nml'
@@ -233,7 +242,13 @@ contains
        end do
     end if
     do i=1,total_comps
-       if(comp_iamin(i) .and. (comp_comm_iam(i) == 0)) then
+       ! selectively turn on/off support for particular component
+       uses_pio = .true.
+       if (present(comp_with_pio)) then
+          uses_pio = comp_with_pio(i)
+       end if
+
+       if(comp_iamin(i) .and. (comp_comm_iam(i) == 0) .and. uses_pio) then
           write(shr_log_unit,*) io_compname(i),' : pio_numiotasks = ',pio_comp_settings(i)%pio_numiotasks
           write(shr_log_unit,*) io_compname(i),' : pio_stride = ',pio_comp_settings(i)%pio_stride
           write(shr_log_unit,*) io_compname(i),' : pio_rearranger = ',pio_comp_settings(i)%pio_rearranger
